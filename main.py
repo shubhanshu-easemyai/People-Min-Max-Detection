@@ -1,5 +1,4 @@
-# "People-Min-Max - old rdx; 0.0.4 media-server; 2.0.0 person-detection"
-# created a new tag 
+# "People-Min-Max - old rdx; 0.0.4 media-server; 1.0.0 person-detection"
 from rdx import Connector, console_logger
 from shapely.geometry import Polygon, Point
 from typing import Any
