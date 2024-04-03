@@ -1,1 +1,2 @@
-People-Min-Max-Detection - new rdx; 0.0.6 media-server; 2.0.0 person-detection
+Resolved error of roi details of each loaded camera.
+Now the id's are used to extract values defined by user from the respective camera details to process the thresholds required in the processing.
