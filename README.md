@@ -1,1 +1,2 @@
-This version is not perfect as handles the min max with the help of self.object_tracker
+People min max with last cache count. 
+This also have problems as if I want to have empty min count so it won't let you have it and we have defined a logic containing the min and max people count as 0.
