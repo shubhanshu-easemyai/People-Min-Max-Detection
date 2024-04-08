@@ -1,4 +1,4 @@
-# People min max that mantain the last cache count - this has all the necessary requirements of min, max and all the bugs are fixed in this
+# This version is not perfect as handles the min max with the help of self.object_tracker
 
 from rdx import Connector, console_logger
 from shapely.geometry import Polygon, Point
@@ -44,8 +44,7 @@ polygons = []
 loaded_camera_ids = {}
 object_class_name = "person"
 max_time_threshold_detection = 1  #default is set to 1
-min_people_count = -1  #default is set to -1
-max_people_count = 10000000  #default is set to 10000000
+allowed_People = 0  #default is set to 0
 
 report_time_threshold = 1  #default is set to 1
 sample_generator = {}  #This is if general settings wants continuous stream of data
@@ -73,7 +72,7 @@ def fetch_default_settings(width, height):
 
 
 def load_configuration_settings(source_id, source_name, **kwargs):
-    global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count
+    global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, allowed_People
     try:
         source_info = SourceInfo.objects(
             source_id=source_id, source_name=source_name
@@ -104,8 +103,7 @@ def load_configuration_settings(source_id, source_name, **kwargs):
     try:
         max_time_threshold_detection_initialize = 1
         report_time_threshold_initialize = 1 
-        min_people_count_initialize = -1
-        max_people_count_initialize = 10000000
+        allowed_People_initialize = 0
         for settings in usecase_settings:
             logger.debug(settings)
             for roi in settings.settings["ROI_settings"]:
@@ -120,36 +118,11 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                     )
 
                 polygons.append(Polygon(corners))
-                min_people_count_value = roi.get("min_people_count", None)
-                if min_people_count_value is not None and min_people_count_value != '':
-                    min_people_count = int(min_people_count_value)
-                else:
-                    min_people_count = min_people_count_initialize
-
-                max_people_count_value = roi.get("max_people_count", None)
-                if max_people_count_value is not None and max_people_count_value != '':
-                    max_people_count = int(max_people_count_value)
-                else:
-                    max_people_count = max_people_count_initialize
-
-                report_time_threshold_value = roi.get("report_time_threshold", None)
-                if report_time_threshold_value is not None and report_time_threshold_value != '':
-                    report_time_threshold = int(report_time_threshold_value)
-                else:
-                    report_time_threshold = report_time_threshold_initialize
-
-                max_time_threshold_detection_value = roi.get("max_time_threshold_detection", None)
-                if max_time_threshold_detection_value is not None and max_time_threshold_detection_value != '':
-                    max_time_threshold_detection = int(max_time_threshold_detection_value)
-                else:
-                    max_time_threshold_detection = max_time_threshold_detection_initialize
-
                 sources_list.append(
                     {
-                        "min_people_count": min_people_count,
-                        "max_people_count": max_people_count,
-                        "report_time_threshold": report_time_threshold,
-                        "max_time_threshold_detection": max_time_threshold_detection,
+                        "allowed_People": int(roi.get("allowed_People", allowed_People_initialize)),
+                        "report_time_threshold": int(roi.get("report_time_threshold", report_time_threshold_initialize)),
+                        "max_time_threshold_detection": int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize)),
                         "source": settings.source_details,
                         "user": settings.user_details,
                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
@@ -157,14 +130,15 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                         "source_id": source_id
                     }
                 )
-
+                allowed_People = int(roi.get("allowed_People", allowed_People_initialize))
+                report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize))
+                max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize))
                 loaded_camera_ids[source_id]["indexes"].append(start_index)
 
                 loaded_camera_ids[source_id]["extra"] = {
-                    "min_people_count": min_people_count,
-                    "max_people_count": max_people_count,
-                    "report_time_threshold": report_time_threshold,
-                    "max_time_threshold_detection": max_time_threshold_detection,
+                    "allowed_People": int(roi.get("allowed_People", allowed_People_initialize)),
+                    "report_time_threshold": int(roi.get("report_time_threshold", report_time_threshold_initialize)),
+                    "max_time_threshold_detection": int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize)),
                     "source": settings.source_details,
                     "user": settings.user_details,
                     "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
@@ -175,6 +149,7 @@ def load_configuration_settings(source_id, source_name, **kwargs):
     except Exception as e:
         logger.debug(e)
         sources_list = []
+
 
 
 def post_action(connector, index, alert_data, key, headers, transaction_id):
@@ -217,7 +192,7 @@ def post_process(
     storage_path,
     alert_schema,
     index,
-    detected_objects,
+    detected_objects_unprocessed,
     key,
     headers,
     transaction_id,
@@ -254,11 +229,11 @@ def post_process(
                 "media_height": headers["source_frame_height"],
                 "media_type": "image",
                 "roi_details": [copy.deepcopy(sources_list[index]["roi"])],
-                "detections": copy.deepcopy(detected_objects), 
+                "detections": copy.deepcopy(detected_objects_unprocessed), 
             }
         ]
 
-        # logger.debug(detected_objects)
+        logger.debug(detected_objects_unprocessed)
 
     alert_schema["group_name"] = headers["source_name"]
     alert_schema["sources"] = [sources_list[index]["source"].payload()]
@@ -600,12 +575,15 @@ class AppConfigurationSettingsHandler:
             logger.debug(e)
 
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from pytz import utc
+from functools import partial
+
 class DataProcessor:
     def __init__(self, connector: Connector, service_details: dict) -> None:
         self.connector = connector
-        self.total_detection_cache = None
+        
         self.detected_objects = [] 
-        self.live = {}
         self.people_in_current_frame = {}
         self.object_tracker = {}
 
@@ -624,13 +602,36 @@ class DataProcessor:
         if "SERVICE_MOUNTS" in service_details:
             self.image_storage_path = service_details["SERVICE_MOUNTS"]["output_media"]
 
-   
+        self.scheduler = BackgroundScheduler(timezone=utc)
+        self.scheduler.add_job(partial(self.clear_cache, self.object_tracker), 'interval', seconds=30)
+        self.scheduler.start()
+
+
+    def clear_cache(self, object_to_cache):
+        utc_now = datetime.datetime.utcnow()
+        five_minutes_ago = datetime.timedelta(seconds=5)
+        
+        objects_to_remove = []
+        for object_id, object_data in object_to_cache.items():
+            last_detected_time = object_data.get("last_detected")
+            created_time = object_data.get("created")
+            if last_detected_time is not None and (utc_now - last_detected_time) > five_minutes_ago:
+                objects_to_remove.append(object_id)
+            elif last_detected_time is None and (utc_now - created_time) > five_minutes_ago:
+                objects_to_remove.append(object_id)
+                # logger.debug(object_id)
+        
+        logger.debug(objects_to_remove)
+        # Remove objects from object_to_cache
+        for object_id in objects_to_remove:
+            logger.debug(object_to_cache)
+            del object_to_cache[object_id]
+            logger.debug(self.object_tracker)
+        # objects_to_remove.clear()
+
+
     def process_data(self, data, **kwargs):
         try:
-            global min_people_count, max_people_count
-            logger.debug(min_people_count)
-            logger.debug(max_people_count)
-
             utc_now = datetime.datetime.utcnow()
             self.detected_objects.clear()
             self.people_in_current_frame.clear()
@@ -643,30 +644,39 @@ class DataProcessor:
             except KeyError:
                 load_configuration_settings(**source_details)
 
-                
-            min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"]["min_people_count"]
-            max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"]["max_people_count"]
-            # logger.debug(max_people_count)
-            # logger.debug(min_people_count)
+            for detected_object in copy.deepcopy(data["detections"]):
+                if detected_object["name"] == object_class_name and detected_object["confidence"] >= 0.5:
+                    x_coordinate = (detected_object["x1"] + detected_object["x2"]) // 2
+                    y_coordinate = (detected_object["y1"] + detected_object["y4"]) // 2
 
-            total_detection_count = len(data["detections"])
-            # logger.debug(data["detections"])
-            # logger.debug(total_detection_count)
-            # logger.debug(self.total_detection_cache)
-            if not min_people_count <= total_detection_count <= max_people_count and total_detection_count != self.total_detection_cache:
-                self.total_detection_cache = total_detection_count
-                # logger.debug(self.total_detection_cache)
+                    for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
+                        # report_time_threshold = loaded_camera_ids[source_details["source_id"]]["extra"]["report_time_threshold"]
+                        max_time_threshold_detection = loaded_camera_ids[source_details["source_id"]]["extra"]["max_time_threshold_detection"]
+                        if Point(x_coordinate, y_coordinate).within(polygons[_id]):
+                            object_id = "{}_{}_{}".format(
+                                source_details["source_id"],
+                                sources_list[_id]["roi"]["roi_name"],
+                                detected_object["object_id"],
+                            )
 
-                for detected_object in copy.deepcopy(data["detections"]):
-                    if detected_object["name"] == object_class_name and detected_object["confidence"] >= 0.5:
-                        x_coordinate = (detected_object["x1"] + detected_object["x2"]) // 2
-                        y_coordinate = (detected_object["y1"] + detected_object["y4"]) // 2
+                            if object_id not in self.object_tracker:
+                                self.object_tracker[object_id] = {
+                                    "last_detected": None,
+                                    "created": utc_now,
+                                    "alert": False,
+                                    "detected_object": copy.deepcopy(detected_object),
+                                }
+                            
+                            # This logic will handle the continuous data stream after the general settings call for it
+                            # if self.object_tracker[object_id]["alert"]:
+                            #     if self.object_tracker[object_id]['last_detected'] and (utc_now - self.object_tracker[object_id]["last_detected"]) >= datetime.timedelta(seconds=report_time_threshold):
+                            #         sample_generator[object_id] = self.object_tracker[object_id]
+                            #         self.object_tracker[object_id]["last_detected"] = utc_now
 
-                        for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
-                            # report_time_threshold = loaded_camera_ids[source_details["source_id"]]["extra"]["report_time_threshold"]
-                            if Point(x_coordinate, y_coordinate).within(polygons[_id]):
-
-                                current_detected_object = copy.deepcopy(detected_object)                            
+                            current_detected_object = copy.deepcopy(detected_object)
+                            logger.debug(current_detected_object)
+                            
+                            if self.object_tracker[object_id]["alert"]:
                                 temp_object = {
                                     "confidence": current_detected_object["confidence"],
                                     "name": current_detected_object["name"],
@@ -682,29 +692,35 @@ class DataProcessor:
                                         "y4": current_detected_object["y4"]
                                     }
                                 }
-                                self.detected_objects.append(copy.deepcopy(temp_object))
+                                self.people_in_current_frame[object_id] = copy.deepcopy(temp_object)
+                                self.object_tracker[object_id]["last_detected"] = utc_now
 
-                                # if self.object_tracker[object_id]["alert"]:
-                                #     if self.object_tracker[object_id]['last_detected'] and (utc_now - self.object_tracker[object_id]["last_detected"]) >= datetime.timedelta(seconds=report_time_threshold):
-                                #         sample_generator[object_id] = self.object_tracker[object_id]
-                                #         self.object_tracker[object_id]["last_detected"] = utc_now
+                            elif not self.object_tracker[object_id]["alert"]:
+                                if (
+                                    datetime.datetime.utcnow()
+                                    - self.object_tracker[object_id]["created"]
+                                ).seconds > max_time_threshold_detection:
+                                    self.object_tracker[object_id]["alert"] = True
 
+            # logger.debug(self.people_in_current_frame)
+            logger.debug(len(self.people_in_current_frame))      
+
+            for value in self.people_in_current_frame.values():
+                self.detected_objects.append(value)
+
+            if len(self.detected_objects) > allowed_People:
                 # logger.debug(self.detected_objects)
-                if self.detected_objects:
-                    logger.debug(self.detected_objects)
-                    post_process(
-                        connector=connector,
-                        storage_path=self.image_storage_path,
-                        alert_schema=copy.deepcopy(self.alert_metadata),
-                        index=_id,
-                        detected_objects=copy.deepcopy(self.detected_objects),
-                        key=key,
-                        headers=source_details,
-                        transaction_id=transaction_id,
-                        **data,
-                    )
-            # else:
-            #     logger.debug("nothing")
+                post_process(
+                    connector=connector,
+                    storage_path=self.image_storage_path,
+                    alert_schema=copy.deepcopy(self.alert_metadata),
+                    index=_id,
+                    detected_objects_unprocessed=copy.deepcopy(self.detected_objects),
+                    key=key,
+                    headers=source_details,
+                    transaction_id=transaction_id,
+                    **data,
+                )
         except Exception as e:
             logger.error(
             "Error on line {}  EXCEPTION: {}".format(sys.exc_info()[-1].tb_lineno, e)

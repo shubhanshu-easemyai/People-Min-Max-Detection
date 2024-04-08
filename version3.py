@@ -1,4 +1,4 @@
-# People min max that mantain the last cache count - this has all the necessary requirements of min, max and all the bugs are fixed in this
+# People min max that mantain the last cache count 
 
 from rdx import Connector, console_logger
 from shapely.geometry import Polygon, Point
@@ -175,6 +175,90 @@ def load_configuration_settings(source_id, source_name, **kwargs):
     except Exception as e:
         logger.debug(e)
         sources_list = []
+
+
+# def load_configuration_settings(source_id, source_name, **kwargs):
+#     global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count
+#     try:
+#         source_info = SourceInfo.objects(
+#             source_id=source_id, source_name=source_name
+#         ).get()
+#         if source_id not in loaded_camera_ids:
+#             loaded_camera_ids[source_id] = {"source_name": source_name, "indexes": [], "extra":{}}
+#         else:
+#             removed_items = 0
+#             first_index = 0
+#             for _id, _index in enumerate(loaded_camera_ids[source_id]["indexes"]):
+#                 if _id == 0:
+#                     first_index = _index
+#                 polygons.pop(_index - _id)
+#                 sources_list.pop(_index - _id)
+#                 removed_items += 1
+#             if removed_items != 0:
+#                 for _source in loaded_camera_ids:
+#                     loaded_camera_ids[_source]["indexes"] = [x-removed_items if x >= first_index else x for x in loaded_camera_ids[_source]["indexes"]]
+
+#             loaded_camera_ids[source_id]["indexes"] = []
+#     except DoesNotExist:
+#         return
+
+#     usecase_settings = UsecaseParameters.objects(source_details=source_info).all()
+    
+#     start_index = len(sources_list)
+
+#     try:
+#         max_time_threshold_detection_initialize = 1
+#         report_time_threshold_initialize = 1 
+#         min_people_count_initialize = -1
+#         max_people_count_initialize = 10000000
+#         for settings in usecase_settings:
+#             logger.debug(settings)
+#             for roi in settings.settings["ROI_settings"]:
+#                 corners = []
+
+#                 for i in range(int(len(roi["cords"].keys()) / 2)):
+#                     corners.append(
+#                         (
+#                             int(roi["cords"]["x{}".format(i + 1)]),
+#                             int(roi["cords"]["y{}".format(i + 1)]),
+#                         )
+#                     )
+
+#                 polygons.append(Polygon(corners))
+#                 sources_list.append(
+#                     {
+#                         "min_people_count": int(roi.get("min_people_count", min_people_count_initialize)),
+#                         "max_people_count": int(roi.get("max_people_count", max_people_count_initialize)),
+#                         "report_time_threshold": int(roi.get("report_time_threshold", report_time_threshold_initialize)),
+#                         "max_time_threshold_detection": int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize)),
+#                         "source": settings.source_details,
+#                         "user": settings.user_details,
+#                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
+#                         "source_name": settings.source_details.source_name,
+#                         "source_id": source_id
+#                     }
+#                 )
+#                 min_people_count = int(roi.get("min_people_count", min_people_count_initialize))
+#                 max_people_count = int(roi.get("max_people_count", max_people_count_initialize))
+#                 report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize))
+#                 max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize))
+#                 loaded_camera_ids[source_id]["indexes"].append(start_index)
+
+#                 loaded_camera_ids[source_id]["extra"] = {
+#                     "min_people_count": int(roi.get("min_people_count", min_people_count_initialize)),
+#                     "max_people_count": int(roi.get("max_people_count", max_people_count_initialize)),
+#                     "report_time_threshold": int(roi.get("report_time_threshold", report_time_threshold_initialize)),
+#                     "max_time_threshold_detection": int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize)),
+#                     "source": settings.source_details,
+#                     "user": settings.user_details,
+#                     "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
+#                     "source_name": settings.source_details.source_name,
+#                     "source_id": source_id,
+#                 }
+#                 start_index += 1
+#     except Exception as e:
+#         logger.debug(e)
+#         sources_list = []
 
 
 def post_action(connector, index, alert_data, key, headers, transaction_id):
