@@ -737,7 +737,7 @@ class DataProcessor:
             self.total_detection_current_cache = copy.deepcopy(self.total_detection_past_cache) 
 
             for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
-                logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
+                # logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
                 if _id in self.detected_objects:
                     # logger.debug(self.detected_objects[_id])
                     total_detection_count = len(self.detected_objects[_id])
@@ -745,12 +745,12 @@ class DataProcessor:
 
                     min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["min_people_count"]
                     max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["max_people_count"]
-                    # logger.debug(min_people_count)
-                    # logger.debug(max_people_count)
 
                     if not min_people_count <= total_detection_count <= max_people_count:
                         if _id not in self.total_detection_past_cache:
                             logger.debug(_id)
+                            logger.debug(min_people_count)
+                            logger.debug(max_people_count)
                             # logger.debug(self.total_detection_past_cache[_id])
                             self.total_detection_current_cache[_id] = total_detection_count
                             logger.debug(self.total_detection_current_cache)
@@ -770,9 +770,9 @@ class DataProcessor:
                             logger.debug(utc_now)
 
                         else:
-                            logger.debug(utc_now)
-                            logger.debug(total_detection_count)
-                            logger.debug(self.total_detection_past_cache)
+                            # logger.debug(utc_now)
+                            # logger.debug(total_detection_count)
+                            # logger.debug(self.total_detection_past_cache)
                             if self.total_detection_past_cache[_id] != total_detection_count:
                                 logger.debug(self.total_detection_past_cache[_id])
                                 logger.debug(total_detection_count)
