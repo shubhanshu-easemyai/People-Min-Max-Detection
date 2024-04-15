@@ -688,10 +688,9 @@ class DataProcessor:
         if "SERVICE_MOUNTS" in service_details:
             self.image_storage_path = service_details["SERVICE_MOUNTS"]["output_media"]
 
-   
+
     def process_data(self, data, **kwargs):
         try:
-            # global min_people_count, max_people_count
             utc_now = datetime.datetime.utcnow()
             # logger.debug(utc_now)
 
@@ -706,26 +705,7 @@ class DataProcessor:
             except KeyError:
                 load_configuration_settings(**source_details)
 
-            # logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
             extra = loaded_camera_ids[source_details["source_id"]]["extra"]
-            # logger.debug(len(extra)) #Length of indexes 
-
-            # for _id in copy.deepcopy(loaded_camera_ids[source_details["source_id"]]["indexes"]):
-            #     logger.debug(_id) #Trying to access index
-            
-#################################################
-
-            # for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
-            #     test = extra[_id]
-            #     logger.debug(test)
-
-            #     current_camera = loaded_camera_ids[source_details["source_id"]]["extra"][_id]
-            #     min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["min_people_count"]
-            #     max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["max_people_count"]
-
-            #     logger.debug(current_camera)
-            #     logger.debug(max_people_count)
-            #     logger.debug(min_people_count)
 
             for detected_object in copy.deepcopy(data["detections"]):
                     if detected_object["name"] == object_class_name and detected_object["confidence"] >= 0.5:
@@ -755,63 +735,75 @@ class DataProcessor:
                                 self.detected_objects[_id].append(copy.deepcopy(temp_object))
 
             self.total_detection_current_cache = copy.deepcopy(self.total_detection_past_cache) 
-            # self.total_detection_past_cache.clear()
-            logger.debug(self.total_detection_past_cache)
-            logger.debug(self.total_detection_current_cache)
-            
-            #this will assign the a random variable with the values of current cache so that we 
-            #don't have to create two loops over the loaded_camera_id for processing the objects and calling the post_process.
 
             for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
+                logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
                 if _id in self.detected_objects:
                     # logger.debug(self.detected_objects[_id])
                     total_detection_count = len(self.detected_objects[_id])
-                    logger.debug(total_detection_count)
+                    # logger.debug(total_detection_count)
 
                     min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["min_people_count"]
                     max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["max_people_count"]
+                    # logger.debug(min_people_count)
+                    # logger.debug(max_people_count)
 
-                    if _id not in self.total_detection_past_cache:
-                        logger.debug(_id)
-                        logger.debug(self.total_detection_past_cache)
-                        self.total_detection_current_cache[_id] = total_detection_count
-                        logger.debug(self.total_detection_current_cache)
+                    if not min_people_count <= total_detection_count <= max_people_count:
+                        if _id not in self.total_detection_past_cache:
+                            logger.debug(_id)
+                            # logger.debug(self.total_detection_past_cache[_id])
+                            self.total_detection_current_cache[_id] = total_detection_count
+                            logger.debug(self.total_detection_current_cache)
+                            self.total_detection_past_cache = copy.deepcopy(self.total_detection_current_cache) 
 
-                    elif self.total_detection_past_cache[_id] != total_detection_count:
-                        logger.debug(min_people_count)
-                        logger.debug(max_people_count)
-                        logger.debug(self.total_detection_past_cache)
-
-                        if not min_people_count <= total_detection_count <= max_people_count:
-                            logger.debug(self.total_detection_past_cache[_id])
-                            logger.debug(total_detection_count)
-                            self.total_detection_past_cache[_id] = total_detection_count
                             post_process(
-                                connector=connector,
-                                storage_path=self.image_storage_path,
-                                alert_schema=copy.deepcopy(self.alert_metadata),
-                                index=_id,
-                                detected_objects=copy.deepcopy(self.detected_objects[_id]),
-                                key=key,
-                                headers=source_details,
-                                transaction_id=transaction_id,
-                                **data,
-                            )
+                                    connector=connector,
+                                    storage_path=self.image_storage_path,
+                                    alert_schema=copy.deepcopy(self.alert_metadata),
+                                    index=_id,
+                                    detected_objects=copy.deepcopy(self.detected_objects[_id]),
+                                    key=key,
+                                    headers=source_details,
+                                    transaction_id=transaction_id,
+                                    **data,
+                                )
+                            logger.debug(utc_now)
+
+                        else:
+                            logger.debug(utc_now)
+                            logger.debug(total_detection_count)
+                            logger.debug(self.total_detection_past_cache)
+                            if self.total_detection_past_cache[_id] != total_detection_count:
+                                logger.debug(self.total_detection_past_cache[_id])
+                                logger.debug(total_detection_count)
+                                self.total_detection_past_cache[_id] = total_detection_count
+                                post_process(
+                                    connector=connector,
+                                    storage_path=self.image_storage_path,
+                                    alert_schema=copy.deepcopy(self.alert_metadata),
+                                    index=_id,
+                                    detected_objects=copy.deepcopy(self.detected_objects[_id]),
+                                    key=key,
+                                    headers=source_details,
+                                    transaction_id=transaction_id,
+                                    **data,
+                                )
+
                 else:
+                    logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
                     logger.debug(f"No detections found for _id: {_id}")
 
             self.total_detection_past_cache = copy.deepcopy(self.total_detection_current_cache) 
             self.total_detection_current_cache.clear()
-            
-            logger.debug(self.total_detection_past_cache)
-            logger.debug(self.total_detection_current_cache)
+            # logger.debug(self.total_detection_past_cache)
+            # logger.debug(self.total_detection_current_cache)
 
         except Exception as e:
             logger.error(
             "Error on line {}  EXCEPTION: {}".format(sys.exc_info()[-1].tb_lineno, e)
         )
 
-
+   
 @connector.consume_events
 def fetch_events(data: dict, *args, **kwargs):
     logger.debug(data)
