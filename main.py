@@ -1,5 +1,3 @@
-# People min max that mantain the last cache count - this has all the necessary requirements of min, max and all the bugs are fixed in this
-
 from rdx import Connector, console_logger
 from shapely.geometry import Polygon, Point
 from typing import Any
@@ -72,15 +70,95 @@ def fetch_default_settings(width, height):
     }
 
 
+# def load_configuration_settings(source_id, source_name, **kwargs):
+#     global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count, roi_type
+#     try:
+#         source_info = SourceInfo.objects(
+#             source_id=source_id, source_name=source_name
+#         ).get()
+#         if source_id in loaded_camera_ids:
+#             loaded_camera_ids[source_id]["extra"] = {}
+#         else:
+#             loaded_camera_ids[source_id] = {"source_name": source_name, "indexes": [], "extra": {}}
+
+#         usecase_settings = UsecaseParameters.objects(source_details=source_info).all()
+
+#         start_index = len(sources_list)
+
+#         try:
+#             max_time_threshold_detection_initialize = 1
+#             report_time_threshold_initialize = 1 
+#             min_people_count_initialize = -1
+#             max_people_count_initialize = 10000000
+#             for settings in usecase_settings:
+#                 logger.debug(settings)
+#                 for roi in settings.settings["ROI_settings"]:
+#                     corners = []
+
+#                     for i in range(int(len(roi["cords"].keys()) / 2)):
+#                         corners.append(
+#                             (
+#                                 int(roi["cords"]["x{}".format(i + 1)]),
+#                                 int(roi["cords"]["y{}".format(i + 1)]),
+#                             )
+#                         )
+
+#                     polygons.append(Polygon(corners))
+
+#                     roi_type_value = roi.get("roi_type", None)
+#                     if roi_type_value is not None and roi_type_value != '':
+#                         roi_type = roi_type_value[0]
+#                     else:
+#                         roi_type = None
+
+#                     min_people_count = int(roi.get("min_people_count", min_people_count_initialize) or min_people_count_initialize)
+#                     max_people_count = int(roi.get("max_people_count", max_people_count_initialize) or max_people_count_initialize)
+#                     report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize) or report_time_threshold_initialize)
+#                     max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize) or max_time_threshold_detection_initialize)
+
+#                     sources_list.append(
+#                         {
+#                             "min_people_count": min_people_count,
+#                             "max_people_count": max_people_count,
+#                             "report_time_threshold": report_time_threshold,
+#                             "max_time_threshold_detection": max_time_threshold_detection,
+#                             "source": settings.source_details,
+#                             "user": settings.user_details,
+#                             "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
+#                             "source_name": settings.source_details.source_name,
+#                             "source_id": source_id,
+#                             "roi_type": roi_type
+#                         }
+#                     )
+
+#                     loaded_camera_ids[source_id]["indexes"].append(start_index)
+
+#                     loaded_camera_ids[source_id]["extra"][start_index] = {
+#                         "min_people_count": min_people_count,
+#                         "max_people_count": max_people_count,
+#                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
+#                         "source_id": source_id,
+#                         "roi_type": roi_type
+#                     }
+#                     start_index += 1
+#         except Exception as e:
+#             logger.debug(e)
+#             sources_list = []
+#     except DoesNotExist:
+#         return
+
+
 def load_configuration_settings(source_id, source_name, **kwargs):
-    global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count
+    global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count, roi_type
     try:
         source_info = SourceInfo.objects(
             source_id=source_id, source_name=source_name
         ).get()
+
         if source_id not in loaded_camera_ids:
             loaded_camera_ids[source_id] = {"source_name": source_name, "indexes": [], "extra":{}}
         else:
+            loaded_camera_ids[source_id]["extra"] = {}
             removed_items = 0
             first_index = 0
             for _id, _index in enumerate(loaded_camera_ids[source_id]["indexes"]):
@@ -120,29 +198,17 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                     )
 
                 polygons.append(Polygon(corners))
-                min_people_count_value = roi.get("min_people_count", None)
-                if min_people_count_value is not None and min_people_count_value != '':
-                    min_people_count = int(min_people_count_value)
+                
+                roi_type_value = roi.get("roi_type", None)
+                if roi_type_value is not None and roi_type_value != '':
+                    roi_type = roi_type_value[0]
                 else:
-                    min_people_count = min_people_count_initialize
+                    roi_type = None
 
-                max_people_count_value = roi.get("max_people_count", None)
-                if max_people_count_value is not None and max_people_count_value != '':
-                    max_people_count = int(max_people_count_value)
-                else:
-                    max_people_count = max_people_count_initialize
-
-                report_time_threshold_value = roi.get("report_time_threshold", None)
-                if report_time_threshold_value is not None and report_time_threshold_value != '':
-                    report_time_threshold = int(report_time_threshold_value)
-                else:
-                    report_time_threshold = report_time_threshold_initialize
-
-                max_time_threshold_detection_value = roi.get("max_time_threshold_detection", None)
-                if max_time_threshold_detection_value is not None and max_time_threshold_detection_value != '':
-                    max_time_threshold_detection = int(max_time_threshold_detection_value)
-                else:
-                    max_time_threshold_detection = max_time_threshold_detection_initialize
+                min_people_count = int(roi.get("min_people_count", min_people_count_initialize) or min_people_count_initialize)
+                max_people_count = int(roi.get("max_people_count", max_people_count_initialize) or max_people_count_initialize)
+                report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize) or report_time_threshold_initialize)
+                max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize) or max_time_threshold_detection_initialize)
 
                 sources_list.append(
                     {
@@ -154,22 +220,19 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                         "user": settings.user_details,
                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
                         "source_name": settings.source_details.source_name,
-                        "source_id": source_id
+                        "source_id": source_id,
+                        "roi_type": roi_type
                     }
                 )
 
                 loaded_camera_ids[source_id]["indexes"].append(start_index)
 
-                loaded_camera_ids[source_id]["extra"] = {
+                loaded_camera_ids[source_id]["extra"][start_index] = {
                     "min_people_count": min_people_count,
                     "max_people_count": max_people_count,
-                    "report_time_threshold": report_time_threshold,
-                    "max_time_threshold_detection": max_time_threshold_detection,
-                    "source": settings.source_details,
-                    "user": settings.user_details,
                     "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
-                    "source_name": settings.source_details.source_name,
                     "source_id": source_id,
+                    "roi_type": roi_type
                 }
                 start_index += 1
     except Exception as e:
@@ -268,9 +331,9 @@ def post_process(
     alert_schema["output_data"].append(
         {
             "transaction_id": transaction_id,
-            "output": "person tresspassing detected",
+            "output": "people min max detected",
             "priority": "medium",
-            "alert_text": "person tresspassing detected in region {}".format(
+            "alert_text": "people min max detected in region {}".format(
                 sources_list[index]["roi"]["roi_name"]
             ),
             "metadata": medias,
@@ -603,8 +666,9 @@ class AppConfigurationSettingsHandler:
 class DataProcessor:
     def __init__(self, connector: Connector, service_details: dict) -> None:
         self.connector = connector
-        self.total_detection_cache = None
-        self.detected_objects = [] 
+        self.total_detection_past_cache = {}
+        self.total_detection_current_cache = {}
+        self.detected_objects = {}
         self.live = {}
         self.people_in_current_frame = {}
         self.object_tracker = {}
@@ -627,11 +691,10 @@ class DataProcessor:
    
     def process_data(self, data, **kwargs):
         try:
-            global min_people_count, max_people_count
-            logger.debug(min_people_count)
-            logger.debug(max_people_count)
-
+            # global min_people_count, max_people_count
             utc_now = datetime.datetime.utcnow()
+            # logger.debug(utc_now)
+
             self.detected_objects.clear()
             self.people_in_current_frame.clear()
             transaction_id = kwargs.pop("transaction_id")
@@ -643,29 +706,34 @@ class DataProcessor:
             except KeyError:
                 load_configuration_settings(**source_details)
 
-                
-            min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"]["min_people_count"]
-            max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"]["max_people_count"]
-            # logger.debug(max_people_count)
-            # logger.debug(min_people_count)
+            # logger.debug(loaded_camera_ids[source_details["source_id"]]["indexes"])
+            extra = loaded_camera_ids[source_details["source_id"]]["extra"]
+            # logger.debug(len(extra)) #Length of indexes 
 
-            total_detection_count = len(data["detections"])
-            # logger.debug(data["detections"])
-            # logger.debug(total_detection_count)
-            # logger.debug(self.total_detection_cache)
-            if not min_people_count <= total_detection_count <= max_people_count and total_detection_count != self.total_detection_cache:
-                self.total_detection_cache = total_detection_count
-                # logger.debug(self.total_detection_cache)
+            # for _id in copy.deepcopy(loaded_camera_ids[source_details["source_id"]]["indexes"]):
+            #     logger.debug(_id) #Trying to access index
+            
+#################################################
 
-                for detected_object in copy.deepcopy(data["detections"]):
+            # for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
+            #     test = extra[_id]
+            #     logger.debug(test)
+
+            #     current_camera = loaded_camera_ids[source_details["source_id"]]["extra"][_id]
+            #     min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["min_people_count"]
+            #     max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["max_people_count"]
+
+            #     logger.debug(current_camera)
+            #     logger.debug(max_people_count)
+            #     logger.debug(min_people_count)
+
+            for detected_object in copy.deepcopy(data["detections"]):
                     if detected_object["name"] == object_class_name and detected_object["confidence"] >= 0.5:
                         x_coordinate = (detected_object["x1"] + detected_object["x2"]) // 2
                         y_coordinate = (detected_object["y1"] + detected_object["y4"]) // 2
 
                         for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
-                            # report_time_threshold = loaded_camera_ids[source_details["source_id"]]["extra"]["report_time_threshold"]
                             if Point(x_coordinate, y_coordinate).within(polygons[_id]):
-
                                 current_detected_object = copy.deepcopy(detected_object)                            
                                 temp_object = {
                                     "confidence": current_detected_object["confidence"],
@@ -682,29 +750,66 @@ class DataProcessor:
                                         "y4": current_detected_object["y4"]
                                     }
                                 }
-                                self.detected_objects.append(copy.deepcopy(temp_object))
+                                if _id not in self.detected_objects:
+                                    self.detected_objects[_id] = []
+                                self.detected_objects[_id].append(copy.deepcopy(temp_object))
 
-                                # if self.object_tracker[object_id]["alert"]:
-                                #     if self.object_tracker[object_id]['last_detected'] and (utc_now - self.object_tracker[object_id]["last_detected"]) >= datetime.timedelta(seconds=report_time_threshold):
-                                #         sample_generator[object_id] = self.object_tracker[object_id]
-                                #         self.object_tracker[object_id]["last_detected"] = utc_now
+            self.total_detection_current_cache = copy.deepcopy(self.total_detection_past_cache) 
+            # self.total_detection_past_cache.clear()
+            logger.debug(self.total_detection_past_cache)
+            logger.debug(self.total_detection_current_cache)
+            
+            #this will assign the a random variable with the values of current cache so that we 
+            #don't have to create two loops over the loaded_camera_id for processing the objects and calling the post_process.
 
-                # logger.debug(self.detected_objects)
-                if self.detected_objects:
-                    logger.debug(self.detected_objects)
-                    post_process(
-                        connector=connector,
-                        storage_path=self.image_storage_path,
-                        alert_schema=copy.deepcopy(self.alert_metadata),
-                        index=_id,
-                        detected_objects=copy.deepcopy(self.detected_objects),
-                        key=key,
-                        headers=source_details,
-                        transaction_id=transaction_id,
-                        **data,
-                    )
-            # else:
-            #     logger.debug("nothing")
+            for _id in loaded_camera_ids[source_details["source_id"]]["indexes"]:
+                if _id in self.detected_objects:
+                    # logger.debug(self.detected_objects[_id])
+                    total_detection_count = len(self.detected_objects[_id])
+                    logger.debug(total_detection_count)
+
+                    min_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["min_people_count"]
+                    max_people_count = loaded_camera_ids[source_details["source_id"]]["extra"][_id]["max_people_count"]
+
+                    if _id not in self.total_detection_past_cache:
+                        logger.debug(_id)
+                        logger.debug(self.total_detection_past_cache)
+                        self.total_detection_current_cache[_id] = total_detection_count
+                        logger.debug(self.total_detection_current_cache)
+
+                    elif self.total_detection_past_cache[_id] != total_detection_count:
+                        logger.debug(min_people_count)
+                        logger.debug(max_people_count)
+                        # logger.debug(self.total_detection_past_cache[_id])
+                        logger.debug(self.total_detection_past_cache)
+                        if not min_people_count <= self.total_detection_past_cache[_id] <= max_people_count:
+                            logger.debug(self.total_detection_past_cache[_id])
+                            logger.debug(total_detection_count)
+                            self.total_detection_past_cache[_id] = total_detection_count
+                            post_process(
+                                connector=connector,
+                                storage_path=self.image_storage_path,
+                                alert_schema=copy.deepcopy(self.alert_metadata),
+                                index=_id,
+                                detected_objects=copy.deepcopy(self.detected_objects[_id]),
+                                key=key,
+                                headers=source_details,
+                                transaction_id=transaction_id,
+                                **data,
+                            )
+                        if not min_people_count <= total_detection_count <= max_people_count:
+                            self.total_detection_past_cache[_id] = total_detection_count
+                            logger.debug(self.total_detection_past_cache[_id])
+
+                else:
+                    logger.debug(f"No detections found for _id: {_id}")
+
+            self.total_detection_past_cache = copy.deepcopy(self.total_detection_current_cache) 
+            self.total_detection_current_cache.clear()
+            
+            logger.debug(self.total_detection_past_cache)
+            logger.debug(self.total_detection_current_cache)
+
         except Exception as e:
             logger.error(
             "Error on line {}  EXCEPTION: {}".format(sys.exc_info()[-1].tb_lineno, e)
@@ -729,13 +834,11 @@ def fetch_events(data: dict, *args, **kwargs):
 
 dataProcessor = DataProcessor(connector=connector, service_details=service_details)
 
-
 @connector.consume_data
 def fetch_metadata(data: dict, *args, **kwargs):
     try:
         dataProcessor.process_data(**data)
     except Exception as e:
         logger.debug(e)
-
 
 connector.run()
