@@ -780,10 +780,7 @@ class DataProcessor:
                     elif self.total_detection_past_cache[_id] != total_detection_count:
                         logger.debug(min_people_count)
                         logger.debug(max_people_count)
-                        # logger.debug(self.total_detection_past_cache[_id])
                         logger.debug(self.total_detection_past_cache)
-
-                        # if _id not in self.total_detection_past_cache[_id] 
 
                         if not min_people_count <= total_detection_count <= max_people_count:
                             logger.debug(self.total_detection_past_cache[_id])
@@ -800,29 +797,6 @@ class DataProcessor:
                                 transaction_id=transaction_id,
                                 **data,
                             )
-                        if not min_people_count <= total_detection_count <= max_people_count:
-                            self.total_detection_past_cache[_id] = total_detection_count
-                            logger.debug(self.total_detection_past_cache[_id])
-
-                        # if not min_people_count <= self.total_detection_past_cache[_id] <= max_people_count:
-                        #     logger.debug(self.total_detection_past_cache[_id])
-                        #     logger.debug(total_detection_count)
-                        #     self.total_detection_past_cache[_id] = total_detection_count
-                        #     post_process(
-                        #         connector=connector,
-                        #         storage_path=self.image_storage_path,
-                        #         alert_schema=copy.deepcopy(self.alert_metadata),
-                        #         index=_id,
-                        #         detected_objects=copy.deepcopy(self.detected_objects[_id]),
-                        #         key=key,
-                        #         headers=source_details,
-                        #         transaction_id=transaction_id,
-                        #         **data,
-                        #     )
-                        # if not min_people_count <= total_detection_count <= max_people_count:
-                        #     self.total_detection_past_cache[_id] = total_detection_count
-                        #     logger.debug(self.total_detection_past_cache[_id])
-
                 else:
                     logger.debug(f"No detections found for _id: {_id}")
 
