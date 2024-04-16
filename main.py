@@ -41,11 +41,9 @@ sources_list = []
 polygons = []
 loaded_camera_ids = {}
 object_class_name = "person"
-max_time_threshold_detection = 1  #default is set to 1
 min_people_count = -1  #default is set to -1
 max_people_count = 10000000  #default is set to 10000000
 
-report_time_threshold = 1  #default is set to 1
 sample_generator = {}  #This is if general settings wants continuous stream of data
 
 
@@ -70,86 +68,8 @@ def fetch_default_settings(width, height):
     }
 
 
-# def load_configuration_settings(source_id, source_name, **kwargs):
-#     global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count, roi_type
-#     try:
-#         source_info = SourceInfo.objects(
-#             source_id=source_id, source_name=source_name
-#         ).get()
-#         if source_id in loaded_camera_ids:
-#             loaded_camera_ids[source_id]["extra"] = {}
-#         else:
-#             loaded_camera_ids[source_id] = {"source_name": source_name, "indexes": [], "extra": {}}
-
-#         usecase_settings = UsecaseParameters.objects(source_details=source_info).all()
-
-#         start_index = len(sources_list)
-
-#         try:
-#             max_time_threshold_detection_initialize = 1
-#             report_time_threshold_initialize = 1 
-#             min_people_count_initialize = -1
-#             max_people_count_initialize = 10000000
-#             for settings in usecase_settings:
-#                 logger.debug(settings)
-#                 for roi in settings.settings["ROI_settings"]:
-#                     corners = []
-
-#                     for i in range(int(len(roi["cords"].keys()) / 2)):
-#                         corners.append(
-#                             (
-#                                 int(roi["cords"]["x{}".format(i + 1)]),
-#                                 int(roi["cords"]["y{}".format(i + 1)]),
-#                             )
-#                         )
-
-#                     polygons.append(Polygon(corners))
-
-#                     roi_type_value = roi.get("roi_type", None)
-#                     if roi_type_value is not None and roi_type_value != '':
-#                         roi_type = roi_type_value[0]
-#                     else:
-#                         roi_type = None
-
-#                     min_people_count = int(roi.get("min_people_count", min_people_count_initialize) or min_people_count_initialize)
-#                     max_people_count = int(roi.get("max_people_count", max_people_count_initialize) or max_people_count_initialize)
-#                     report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize) or report_time_threshold_initialize)
-#                     max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize) or max_time_threshold_detection_initialize)
-
-#                     sources_list.append(
-#                         {
-#                             "min_people_count": min_people_count,
-#                             "max_people_count": max_people_count,
-#                             "report_time_threshold": report_time_threshold,
-#                             "max_time_threshold_detection": max_time_threshold_detection,
-#                             "source": settings.source_details,
-#                             "user": settings.user_details,
-#                             "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
-#                             "source_name": settings.source_details.source_name,
-#                             "source_id": source_id,
-#                             "roi_type": roi_type
-#                         }
-#                     )
-
-#                     loaded_camera_ids[source_id]["indexes"].append(start_index)
-
-#                     loaded_camera_ids[source_id]["extra"][start_index] = {
-#                         "min_people_count": min_people_count,
-#                         "max_people_count": max_people_count,
-#                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
-#                         "source_id": source_id,
-#                         "roi_type": roi_type
-#                     }
-#                     start_index += 1
-#         except Exception as e:
-#             logger.debug(e)
-#             sources_list = []
-#     except DoesNotExist:
-#         return
-
-
 def load_configuration_settings(source_id, source_name, **kwargs):
-    global sources_list, polygons, loaded_camera_ids, max_time_threshold_detection, report_time_threshold, min_people_count, max_people_count, roi_type
+    global sources_list, polygons, loaded_camera_ids, min_people_count, max_people_count
     try:
         source_info = SourceInfo.objects(
             source_id=source_id, source_name=source_name
@@ -180,7 +100,6 @@ def load_configuration_settings(source_id, source_name, **kwargs):
     start_index = len(sources_list)
 
     try:
-        max_time_threshold_detection_initialize = 1
         report_time_threshold_initialize = 1 
         min_people_count_initialize = -1
         max_people_count_initialize = 10000000
@@ -198,30 +117,19 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                     )
 
                 polygons.append(Polygon(corners))
-                
-                roi_type_value = roi.get("roi_type", None)
-                if roi_type_value is not None and roi_type_value != '':
-                    roi_type = roi_type_value[0]
-                else:
-                    roi_type = None
 
                 min_people_count = int(roi.get("min_people_count", min_people_count_initialize) or min_people_count_initialize)
                 max_people_count = int(roi.get("max_people_count", max_people_count_initialize) or max_people_count_initialize)
-                report_time_threshold = int(roi.get("report_time_threshold", report_time_threshold_initialize) or report_time_threshold_initialize)
-                max_time_threshold_detection = int(roi.get("max_time_threshold_detection", max_time_threshold_detection_initialize) or max_time_threshold_detection_initialize)
 
                 sources_list.append(
                     {
                         "min_people_count": min_people_count,
                         "max_people_count": max_people_count,
-                        "report_time_threshold": report_time_threshold,
-                        "max_time_threshold_detection": max_time_threshold_detection,
                         "source": settings.source_details,
                         "user": settings.user_details,
                         "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
                         "source_name": settings.source_details.source_name,
                         "source_id": source_id,
-                        "roi_type": roi_type
                     }
                 )
 
@@ -232,7 +140,6 @@ def load_configuration_settings(source_id, source_name, **kwargs):
                     "max_people_count": max_people_count,
                     "roi": {"cords": roi["cords"], "roi_name": roi["roi_name"]},
                     "source_id": source_id,
-                    "roi_type": roi_type
                 }
                 start_index += 1
     except Exception as e:
